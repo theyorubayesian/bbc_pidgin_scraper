@@ -1,7 +1,10 @@
 import argparse
 import csv
 import itertools
+import json
 import logging
+import multiprocessing
+import os
 import time
 from typing import Dict, List, Optional, Tuple
 
@@ -97,13 +100,17 @@ def get_urls(
     category_urls = get_valid_urls(page_soup)
 
     # get total number of pages for given category
-    article_count_span = page_soup.find_all(
-        "span", attrs={"class": CONFIG["ARTICLE_COUNT_SPAN"]}
-        )
+    # article_count_span = page_soup.find_all(
+    #     "span", attrs={"class": CONFIG["ARTICLE_COUNT_SPAN"]}
+    #     )
+    pagination_list = page_soup.find_all(
+        "ul", attrs={"class": CONFIG["PAGINATION_LIST_CLASS"]}
+    )
     # if there are multiple pages, get valid urls from each page
     # else just get the articles on the first page
-    if article_count_span:
-        total_article_count = int(article_count_span[0].text)
+    if pagination_list:
+        # total_article_count = int(article_count_span[0].text)
+        total_article_count = int(pagination_list[0].find_all("li")[-1].text)
         logging.info(f"{total_article_count} pages found for {category}")
         logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
 
@@ -112,7 +119,7 @@ def get_urls(
 
         for count in range(1, total_article_count):
 
-            page_soup = get_page_soup(category_url + f"/page/{count+1}")
+            page_soup = get_page_soup(category_url + f"?page={count+1}")
             page_urls = get_valid_urls(page_soup)
             logging.info(f"{len(page_urls)} urls in page {count+1} gotten for {category}")
             category_urls+=page_urls
@@ -140,13 +147,23 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
     all_urls = category_page.findAll("a")
     valid_article_urls = []
     for url in all_urls:
-        href = url.get("href")
+        href: str = url.get("href")
         # from a look at BBC pidgin's urls, they always begin with the following strings. 
         # so we obtain valid article urls using these strings
-        if (
-            href.startswith("/pidgin/tori") or href.startswith("/pidgin/world") or href.startswith("/pidgin/sport")
-            ) and href[-1].isdigit():
-            story_url = "https://www.bbc.com" + href
+        # if (
+        #     href.startswith("/pidgin/tori") or href.startswith("/pidgin/world") or href.startswith("/pidgin/sport")
+        #     ) and href[-1].isdigit():
+            # story_url = "https://www.bbc.com" + href
+        stub = href.split("/")[-1]
+        if stub.startswith("tori") or \
+            stub.startswith("world") or \
+                stub.startswith("sport") and \
+                        stub[-1].isdigit():
+            story_url = "https://www.bbc.com" + href if href.startswith("/pidgin") else href
+            
+            if "live" in story_url.split("/"):
+                continue
+
             valid_article_urls.append(story_url)
 
     return list(set(valid_article_urls))
@@ -192,7 +209,44 @@ def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str
     return (headline, story_text, article_url)
 
 
-def scrape(output_file_name:str, no_of_articles:int, category_urls:Dict[str, List[str]], time_delay:bool) -> None:
+def write_articles(category, output_file_name, urls, no_of_articles, time_delay):
+    path = output_file_name.split("/")
+    output_file_name = os.path.join(path[0], f"{category}_{path[1]}")
+    with open(output_file_name, "w") as csv_file:
+        headers = ["headline", "text", "category", "url"]
+        writer = csv.DictWriter(csv_file, delimiter="\t", fieldnames = headers)
+        writer.writeheader()
+        story_num = 0
+
+        logging.info(f"Writing articles for {category} category...")
+        for url in urls:
+            headline, paragraphs, url = get_article_data(url)
+            if paragraphs:
+                writer.writerow({
+                    headers[0]:headline, 
+                    headers[1]:paragraphs, 
+                    headers[2]:category, 
+                    headers[3]:url,
+                    })
+                story_num+=1
+                logging.info(f"Successfully wrote story number {story_num}")
+
+            if story_num == no_of_articles:
+                logging.info(
+                    f"Requested total number of articles {no_of_articles} reached"
+                    )
+                logging.info(
+                    f"Scraping done. A total of {no_of_articles} articles were scraped!"
+                    )
+                return
+            if time_delay: 
+                time.sleep(10)
+        logging.info(
+        f"Scraping done. A total of {story_num} articles were scraped!"
+        )
+
+
+def scrape(url, category, time_delay, articles_per_category, output_file_name):
     """
     Main function for scraping and writing articles to file
 
@@ -201,42 +255,20 @@ def scrape(output_file_name:str, no_of_articles:int, category_urls:Dict[str, Lis
         :param no_of_articles: number of user specified articles to scrape
         :param category_urls: all articles in a category
     """
-    logging.info("Writing articles to file...")
+    logging.info(f"Getting stories for {category}...")
+    category_story_links = get_urls(url, category, time_delay, articles_per_category)
+    
+    # category_urls[category] = category_story_links
+    json.dump(category_story_links, open(f"{category}_story_links.json", "w"), indent=4)
+    logging.info(f"{len(category_story_links)} stories found for {category} category")
 
-    with open(output_file_name, "w") as csv_file:
-        headers = ["headline", "text", "category", "url"]
-        writer = csv.DictWriter(csv_file, delimiter="\t", fieldnames = headers)
-        writer.writeheader()
-        story_num = 0
-
-        for category, urls in category_urls.items():
-            logging.info(f"Writing articles for {category} category...")
-            for url in urls:
-                headline, paragraphs, url = get_article_data(url)
-                if paragraphs:
-                    writer.writerow({
-                        headers[0]:headline, 
-                        headers[1]:paragraphs, 
-                        headers[2]:category, 
-                        headers[3]:url,
-                        })
-                    story_num+=1
-                    logging.info(f"Successfully wrote story number {story_num}")
-
-                if story_num == no_of_articles:
-                    logging.info(
-                        f"Requested total number of articles {no_of_articles} reached"
-                        )
-                    logging.info(
-                        f"Scraping done. A total of {no_of_articles} articles were scraped!"
-                        )
-                    return
-                if time_delay: 
-                    time.sleep(10)
-    logging.info(
-        f"Scraping done. A total of {story_num} articles were scraped!"
-        )
-
+    write_articles(
+        category, 
+        output_file_name, 
+        category_story_links,
+        articles_per_category,
+        time_delay
+    )
 
 if __name__ == "__main__":
 
@@ -255,7 +287,7 @@ if __name__ == "__main__":
     else:
         categories = ALL_CATEGORIES
 
-    articles_per_category = None
+    articles_per_category = -1
     if params.no_of_articles > 0 and params.spread:
         if "MOST_POPULAR" in categories:
             # most_popular only has one page and 10 articles only
@@ -265,13 +297,17 @@ if __name__ == "__main__":
             articles_per_category = params.no_of_articles // len(categories)
         logging.info(f"Will collect at least {articles_per_category} stories per category")
     
-    # get urls
-    category_urls = {}
-    for category, url in categories.items():
-        logging.info(f"Getting stories for {category}...")
-        category_story_links = get_urls(url, category, params.time_delay, articles_per_category)
-        logging.info(f"{len(category_story_links)} stories found for {category} category")
-        category_urls[category] = category_story_links
-
-    # scrape and write to file 
-    scrape(params.output_file_name, params.no_of_articles, category_urls, params.time_delay)
+    pool = multiprocessing.Pool()
+    processes = [
+        pool.apply_async(
+            scrape,
+            args=(
+                url,
+                category,
+                params.time_delay,
+                articles_per_category,
+                params.output_file_name
+            )
+        ) for category, url in categories.items()
+    ]
+    result = [p.get() for p in processes]

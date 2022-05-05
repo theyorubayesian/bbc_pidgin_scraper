@@ -1,4 +1,5 @@
 ARTICLE_COUNT_SPAN: lx-pagination__page-number qa-pagination-total-page-number
+PAGINATION_LIST_CLASS: "bbc-f8df6t e19602dz4"
 HEADLINE_SPAN_CLASS_A: bbc-13dm3d0 e1yj3cbb0
 HEADLINE_SPAN_CLASS_B:
 STORY_DIV_CLASS: bbc-19j92fr e57qer20
