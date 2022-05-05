@@ -184,10 +184,11 @@ def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str
     """
     page_soup = get_page_soup(article_url)
     article_date = page_soup.find("time", attrs={"class": CONFIG["ARTICLE_DATE_CLASS"]}).get("datetime")
-    article_date = datetime.strptime(article_date, '%Y-%m-%d')
 
-    if article_date <= OLDEST_ARTICLE_DATE:
-        return ("","",article_url)
+    if article_date:
+        article_date = datetime.strptime(article_date, '%Y-%m-%d')
+        if article_date <= OLDEST_ARTICLE_DATE:
+            return ("","",article_url)
     
     headline = page_soup.find(
         "h1", attrs={"class": CONFIG["HEADLINE_SPAN_CLASS_A"]}
