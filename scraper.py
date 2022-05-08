@@ -95,7 +95,11 @@ def get_urls(
     """
     page_soup = get_page_soup(category_url)
     category_urls = get_valid_urls(page_soup)
+    logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
 
+    if articles_per_category and len(category_urls) >= articles_per_category:
+        return category_urls
+    
     # get total number of pages for given category
     article_count_span = page_soup.find_all(
         "span", attrs={"class": CONFIG["ARTICLE_COUNT_SPAN"]}
@@ -103,15 +107,10 @@ def get_urls(
     # if there are multiple pages, get valid urls from each page
     # else just get the articles on the first page
     if article_count_span:
-        total_article_count = int(article_count_span[0].text)
-        logging.info(f"{total_article_count} pages found for {category}")
-        logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
-
-        if articles_per_category and len(category_urls) >= articles_per_category:
-            return category_urls
-
-        for count in range(1, total_article_count):
-
+        total_page_count = int(article_count_span[0].text)
+        logging.info(f"{total_page_count} pages found for {category}")
+        
+        for count in range(1, total_page_count):
             page_soup = get_page_soup(category_url + f"/page/{count+1}")
             page_urls = get_valid_urls(page_soup)
             logging.info(f"{len(page_urls)} urls in page {count+1} gotten for {category}")
@@ -119,9 +118,12 @@ def get_urls(
             
             if articles_per_category and len(category_urls) >= articles_per_category:
                 break
+                
+            articles_per_category -= len(page_urls)
 
             if time_delay: 
                 time.sleep(10)
+        
     else:
         logging.info(f"Only one page found for {category}. {len(category_urls)} urls gotten")
 
@@ -143,10 +145,9 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
         href = url.get("href")
         # from a look at BBC pidgin's urls, they always begin with the following strings. 
         # so we obtain valid article urls using these strings
-        if (
-            href.startswith("/pidgin/tori") or href.startswith("/pidgin/world") or href.startswith("/pidgin/sport")
-            ) and href[-1].isdigit():
-            story_url = "https://www.bbc.com" + href
+        if (href.startswith("/amharic/news") or href.startswith("/amharic/")) \
+            and href[-1].isdigit() and not href.startswith("/amharic/topics"):
+            story_url = "https://www.bbc.com" + href if href.startswith("/amharic") else href
             valid_article_urls.append(story_url)
 
     return list(set(valid_article_urls))
@@ -255,7 +256,7 @@ if __name__ == "__main__":
     else:
         categories = ALL_CATEGORIES
 
-    articles_per_category = None
+    articles_per_category = params.no_of_articles
     if params.no_of_articles > 0 and params.spread:
         if "MOST_POPULAR" in categories:
             # most_popular only has one page and 10 articles only
@@ -267,11 +268,16 @@ if __name__ == "__main__":
     
     # get urls
     category_urls = {}
+    num_articles_collected = 0
     for category, url in categories.items():
         logging.info(f"Getting stories for {category}...")
         category_story_links = get_urls(url, category, params.time_delay, articles_per_category)
         logging.info(f"{len(category_story_links)} stories found for {category} category")
         category_urls[category] = category_story_links
+
+        num_articles_collected += len(category_story_links)
+        if num_articles_collected >= params.no_of_articles:
+            break
 
     # scrape and write to file 
     scrape(params.output_file_name, params.no_of_articles, category_urls, params.time_delay)
