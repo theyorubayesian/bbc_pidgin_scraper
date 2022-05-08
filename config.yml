@@ -11,5 +11,9 @@ CATEGORY_URLS:
   # MOST_POPULAR: https://www.bbc.com/pidgin/popular/read
   # MICHEZO: https://www.bbc.com/swahili/topics/ckdxndddjkxt
   GANACSI: https://www.bbc.com/somali/topics/c2dwqd32v4yt
+<<<<<<< HEAD
   CIYAARAHA: https://www.bbc.com/somali/topics/cpzd4zj1pn2t
   AQOON-GUUD: https://www.bbc.com/somali/topics/cg8382rk20xt
+=======
+  CIYAARAHA: https://www.bbc.com/somali/topics/cpzd4zj1pn2t
+>>>>>>> c84bbe1ae2386e3f8daa427a86dc60ba85fdb1ec
