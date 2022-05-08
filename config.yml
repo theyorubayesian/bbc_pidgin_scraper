@@ -9,4 +9,7 @@ CATEGORY_URLS:
   # WORLD: https://www.bbc.com/pidgin/topics/c0823e52dd0t
   # ENTERTAINMENT: https://www.bbc.com/pidgin/topics/cqywjyzk2vyt
   # MOST_POPULAR: https://www.bbc.com/pidgin/popular/read
-  MICHEZO: https://www.bbc.com/swahili/topics/ckdxndddjkxt
+  # MICHEZO: https://www.bbc.com/swahili/topics/ckdxndddjkxt
+  GANACSI: https://www.bbc.com/somali/topics/c2dwqd32v4yt
+  CIYAARAHA: https://www.bbc.com/somali/topics/cpzd4zj1pn2t
+  AQOON-GUUD: https://www.bbc.com/somali/topics/cg8382rk20xt
