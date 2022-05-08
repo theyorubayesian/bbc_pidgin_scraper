@@ -97,7 +97,7 @@ def get_urls(
     category_urls = get_valid_urls(page_soup)
     logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
 
-    if articles_per_category and len(category_urls) >= articles_per_category:
+    if articles_per_category > 0 and len(category_urls) >= articles_per_category:
         return category_urls
     
     # get total number of pages for given category
@@ -116,7 +116,7 @@ def get_urls(
             logging.info(f"{len(page_urls)} urls in page {count+1} gotten for {category}")
             category_urls+=page_urls
             
-            if articles_per_category and len(category_urls) >= articles_per_category:
+            if articles_per_category > 0 and len(category_urls) >= articles_per_category:
                 break
                 
             articles_per_category -= len(page_urls)
@@ -276,7 +276,8 @@ if __name__ == "__main__":
         category_urls[category] = category_story_links
 
         num_articles_collected += len(category_story_links)
-        if num_articles_collected >= params.no_of_articles:
+        if params.no_of_articles > 0 \
+            and (num_articles_collected >= params.no_of_articles):
             break
 
     # scrape and write to file 
