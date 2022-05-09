@@ -107,7 +107,7 @@ def get_urls(
         logging.info(f"{total_article_count} pages found for {category}")
         logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
 
-        if articles_per_category and len(category_urls) >= articles_per_category:
+        if articles_per_category > 0 and len(category_urls) >= articles_per_category:
             return category_urls
 
         for count in range(1, total_article_count):
@@ -117,7 +117,7 @@ def get_urls(
             logging.info(f"{len(page_urls)} urls in page {count+1} gotten for {category}")
             category_urls+=page_urls
             
-            if articles_per_category and len(category_urls) >= articles_per_category:
+            if articles_per_category > 0 and len(category_urls) >= articles_per_category:
                 break
 
             if time_delay: 
@@ -144,8 +144,11 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
         # from a look at BBC pidgin's urls, they always begin with the following strings. 
         # so we obtain valid article urls using these strings
         if (
-            href.startswith("/pidgin/tori") or href.startswith("/pidgin/world") or href.startswith("/pidgin/sport")
-            ) and href[-1].isdigit():
+            href.startswith("/igbo/afirika") \
+                or href.startswith("/igbo/media") \
+                    or href.startswith("/igbo/egwuregwu")
+                    or href.startswith("/igbo/")
+        ) and href[-1].isdigit() and not href.startswith("/igbo/topics"):
             story_url = "https://www.bbc.com" + href
             valid_article_urls.append(story_url)
 
@@ -255,7 +258,7 @@ if __name__ == "__main__":
     else:
         categories = ALL_CATEGORIES
 
-    articles_per_category = None
+    articles_per_category = params.no_of_articles
     if params.no_of_articles > 0 and params.spread:
         if "MOST_POPULAR" in categories:
             # most_popular only has one page and 10 articles only
@@ -267,11 +270,17 @@ if __name__ == "__main__":
     
     # get urls
     category_urls = {}
+    num_articles_collected = 0
     for category, url in categories.items():
         logging.info(f"Getting stories for {category}...")
         category_story_links = get_urls(url, category, params.time_delay, articles_per_category)
         logging.info(f"{len(category_story_links)} stories found for {category} category")
         category_urls[category] = category_story_links
+
+        num_articles_collected += len(category_story_links)
+        if params.no_of_articles > 0 \
+            and (num_articles_collected >= params.no_of_articles):
+            break
 
     # scrape and write to file 
     scrape(params.output_file_name, params.no_of_articles, category_urls, params.time_delay)
