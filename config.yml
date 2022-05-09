@@ -1,5 +1,5 @@
 ARTICLE_COUNT_SPAN: lx-pagination__page-number qa-pagination-total-page-number
-PAGINATION_LIST_CLASS: "bbc-f8df6t e19602dz4"
+PAGINATION_LIST_CLASS: bbc-f8df6t e19602dz4
 HEADLINE_SPAN_CLASS_A: bbc-13dm3d0 e1yj3cbb0
 ARTICLE_DATE_CLASS: "bbc-1bnmgo0 e4zesg50"
 HEADLINE_SPAN_CLASS_B:

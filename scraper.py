@@ -116,7 +116,7 @@ def get_urls(
         logging.info(f"{total_article_count} pages found for {category}")
         logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
 
-        if articles_per_category and len(category_urls) >= articles_per_category:
+        if articles_per_category > 0 and len(category_urls) >= articles_per_category:
             return category_urls
 
         for count in range(1, total_article_count):
@@ -126,7 +126,7 @@ def get_urls(
             logging.info(f"{len(page_urls)} urls in page {count+1} gotten for {category}")
             category_urls+=page_urls
             
-            if articles_per_category and len(category_urls) >= articles_per_category:
+            if articles_per_category > 0 and len(category_urls) >= articles_per_category:
                 break
 
             if time_delay: 
