@@ -116,7 +116,7 @@ def get_urls(
             logging.info(f"{len(page_urls)} urls in page {count+1} gotten for {category}")
             category_urls+=page_urls
             
-            if articles_per_category > 0 and len(category_urls) >= articles_per_category:
+            if articles_per_category > 0 and len(page_urls) >= articles_per_category:
                 break
                 
             articles_per_category -= len(page_urls)
@@ -145,9 +145,13 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
         href = url.get("href")
         # from a look at BBC pidgin's urls, they always begin with the following strings. 
         # so we obtain valid article urls using these strings
-        if (href.startswith("swahili/habari-") or href.startswith("/swahili/")) \
-            and href[-1].isdigit() and not href.startswith("/yoruba/topics"):
-            story_url = "https://www.bbc.com" + href if href.startswith("/swahili") else href
+        if (
+            href.startswith("/hausa/wasanni") \
+            or href.startswith("/hausa/labarai") \
+                or href.startswith("/hausa/media") \
+                    or href.startswith("/hausa")
+        ) and href[-1].isdigit() and not href.startswith("/hausa/topics"):
+            story_url = "https://www.bbc.com" + href # if href.startswith("/hausa") else href
             valid_article_urls.append(story_url)
 
     return list(set(valid_article_urls))
