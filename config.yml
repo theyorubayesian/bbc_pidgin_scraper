@@ -1,8 +1,10 @@
 ARTICLE_COUNT_SPAN: lx-pagination__page-number qa-pagination-total-page-number
-HEADLINE_SPAN_CLASS_A: bbc-13dm3d0 e1yj3cbb0
-HEADLINE_SPAN_CLASS_B: e8stly50 bbc-kqut3h e14hemmw1
+HEADLINE_SPAN_CLASS_A: bbc-944mpi e1yj3cbb0
+HEADLINE_SPAN_CLASS_B: e8stly50 bbc-1joh6wp e14hemmw1
 STORY_DIV_CLASS: bbc-19j92fr e57qer20
 CATEGORY_URLS:
-  EGWURUEGWU: https://www.bbc.com/igbo/topics/cnq68k0x2vrt
-  NKIRI: https://www.bbc.com/igbo/media/video
-  EWUEWU: https://www.bbc.com/igbo/popular/read
+  CATEGORY_ONE: https://www.bbc.com/tigrinya/topics/cnq68nnxxr2t
+  CATEGORY_TWO: https://www.bbc.com/tigrinya/topics/c1gdqrg28zxt
+  CATEGORY_THREE: https://www.bbc.com/tigrinya/topics/cr50y6516jnt
+  CATEGORY_FOUR: https://www.bbc.com/tigrinya/topics/cr50y664ww4t
+  CATEGORY_FIVE: https://www.bbc.com/tigrinya/topics/c7zp5gzgqg0t

@@ -144,11 +144,11 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
         # from a look at BBC pidgin's urls, they always begin with the following strings. 
         # so we obtain valid article urls using these strings
         if (
-            href.startswith("/igbo/afirika") \
-                or href.startswith("/igbo/media") \
-                    or href.startswith("/igbo/egwuregwu")
-                    or href.startswith("/igbo/")
-        ) and href[-1].isdigit() and not href.startswith("/igbo/topics"):
+            href.startswith("/tigrinya/news") \
+                # or href.startswith("/igbo/media") \
+                #     or href.startswith("/igbo/egwuregwu")
+                    or href.startswith("/tigrinya/")
+        ) and href[-1].isdigit() and not href.startswith("/tigrinya/topics"):
             story_url = "https://www.bbc.com" + href
             valid_article_urls.append(story_url)
 
