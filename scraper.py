@@ -159,7 +159,8 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
         stub = href.split("/")[-1]
         if stub.startswith("tori") or \
             stub.startswith("world") or \
-                stub.startswith("sport") and \
+                stub.startswith("media") or \
+                    stub.startswith("sport") and \
                         stub[-1].isdigit():
             story_url = "https://www.bbc.com" + href if href.startswith("/pidgin") else href
             
@@ -183,9 +184,10 @@ def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str
         - article_url: input article url
     """
     page_soup = get_page_soup(article_url)
-    article_date = page_soup.find("time", attrs={"class": CONFIG["ARTICLE_DATE_CLASS"]}).get("datetime")
+    article_date = page_soup.find("time", attrs={"class": CONFIG["ARTICLE_DATE_CLASS"]})
 
     if article_date:
+        article_date = article_date.get("datetime")
         article_date = datetime.strptime(article_date, '%Y-%m-%d')
         if article_date <= OLDEST_ARTICLE_DATE:
             return ("","",article_url)
