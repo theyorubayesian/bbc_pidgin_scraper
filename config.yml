@@ -1,10 +1,18 @@
 ARTICLE_COUNT_SPAN: lx-pagination__page-number qa-pagination-total-page-number
-HEADLINE_SPAN_CLASS_A: bbc-944mpi e1yj3cbb0
-HEADLINE_SPAN_CLASS_B: e8stly50 bbc-1joh6wp e14hemmw1
+HEADLINE_SPAN_CLASS_A: bbc-13dm3d0 e1yj3cbb0
+HEADLINE_SPAN_CLASS_B: e8stly50 bbc-kqut3h e14hemmw1 # e8stly50 bbc-1joh6wp e14hemmw1
 STORY_DIV_CLASS: bbc-19j92fr e57qer20
 CATEGORY_URLS:
-  CATEGORY_ONE: https://www.bbc.com/tigrinya/topics/cnq68nnxxr2t
-  CATEGORY_TWO: https://www.bbc.com/tigrinya/topics/c1gdqrg28zxt
-  CATEGORY_THREE: https://www.bbc.com/tigrinya/topics/cr50y6516jnt
-  CATEGORY_FOUR: https://www.bbc.com/tigrinya/topics/cr50y664ww4t
-  CATEGORY_FIVE: https://www.bbc.com/tigrinya/topics/c7zp5gzgqg0t
+  UUMMATA: https://www.bbc.com/afaanoromoo/topics/c340q45x0prt
+  AADAA: https://www.bbc.com/afaanoromoo/topics/c5qvpqg6g93t
+  HAWAASAA: https://www.bbc.com/afaanoromoo/topics/ckdxnd85y40t
+  ITOOPHIYAA: https://www.bbc.com/afaanoromoo/topics/c2dwqdy81y1t
+  KORONAAVAAYIRAS: https://www.bbc.com/afaanoromoo/topics/cmnqydyjyy4t
+  FAYYAA: https://www.bbc.com/afaanoromoo/topics/cqywjyx745xt
+  QUUNNAMTII: https://www.bbc.com/afaanoromoo/topics/c95y35d83qrt
+  KEENIYA: https://www.bbc.com/afaanoromoo/topics/c8y94yzyv5vt
+  DUBARTOOTA: https://www.bbc.com/afaanoromoo/topics/c8y94yq185dt
+  VIIDIYO: https://www.bbc.com/afaanoromoo/media/video
+  JAJJABOO: https://www.bbc.com/afaanoromoo/popular/read
+  HIYYUMMAA: https://www.bbc.com/afaanoromoo/topics/cyx5kx656zrt
+  CHAAYIINAA: https://www.bbc.com/afaanoromoo/topics/cvjp2jg4v4qt
