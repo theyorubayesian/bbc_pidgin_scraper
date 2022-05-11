@@ -147,11 +147,11 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
         # from a look at BBC pidgin's urls, they always begin with the following strings. 
         # so we obtain valid article urls using these strings
         if (
-            href.startswith("/afaanoromoo/oduu") \
+            href.startswith("/gahuza/amakuru") \
                 # or href.startswith("/igbo/media") \
                 #     or href.startswith("/igbo/egwuregwu")
-                    or href.startswith("/afaanoromoo/")
-        ) and href[-1].isdigit() and not href.startswith("/afaanoromoo/topics"):
+                    or href.startswith("/gahuza/")
+        ) and href[-1].isdigit() and not href.startswith("/gahuza/topics"):
             story_url = "https://www.bbc.com" + href
             valid_article_urls.append(story_url)
 
@@ -257,50 +257,6 @@ def scrape(url, category, time_delay, articles_per_category, output_file_name):
         articles_per_category,
         time_delay
     )
-# def scrape(output_file_name:str, no_of_articles:int, category_urls:Dict[str, List[str]], time_delay:bool) -> None:
-#     """
-#     Main function for scraping and writing articles to file
-
-#     input:
-#         :param output_file_name: file name where output is saved
-#         :param no_of_articles: number of user specified articles to scrape
-#         :param category_urls: all articles in a category
-#     """
-#     logging.info("Writing articles to file...")
-
-#     with open(output_file_name, "w") as csv_file:
-#         headers = ["headline", "text", "category", "url"]
-#         writer = csv.DictWriter(csv_file, delimiter="\t", fieldnames = headers)
-#         writer.writeheader()
-#         story_num = 0
-
-#         for category, urls in category_urls.items():
-#             logging.info(f"Writing articles for {category} category...")
-#             for url in urls:
-#                 headline, paragraphs, url = get_article_data(url)
-#                 if paragraphs:
-#                     writer.writerow({
-#                         headers[0]:headline, 
-#                         headers[1]:paragraphs, 
-#                         headers[2]:category, 
-#                         headers[3]:url,
-#                         })
-#                     story_num+=1
-#                     logging.info(f"Successfully wrote story number {story_num}")
-
-#                 if story_num == no_of_articles:
-#                     logging.info(
-#                         f"Requested total number of articles {no_of_articles} reached"
-#                         )
-#                     logging.info(
-#                         f"Scraping done. A total of {no_of_articles} articles were scraped!"
-#                         )
-#                     return
-#                 if time_delay: 
-#                     time.sleep(10)
-#     logging.info(
-#         f"Scraping done. A total of {story_num} articles were scraped!"
-#         )
 
 
 if __name__ == "__main__":
