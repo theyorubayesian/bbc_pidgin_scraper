@@ -1,5 +1,6 @@
 import argparse
 import csv
+import glob
 import itertools
 import json
 import logging
@@ -7,8 +8,10 @@ import multiprocessing
 import os
 import time
 from datetime import datetime
+from functools import partial
 from typing import Dict, List, Optional, Tuple
 
+import pandas as pd
 import requests
 import yaml
 from bs4 import BeautifulSoup
@@ -61,6 +64,12 @@ def get_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="""Spread `no_of_articles` evenly across categories. If `most_popular` in categories, 
         all its articles are collected and the remainder is spread across other categories"""
+    )
+
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Remove sub-topic TSV files created after combining them into final corpora"
     )
     
     return parser
@@ -172,6 +181,25 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
     return list(set(valid_article_urls))
 
 
+def get_topics(homepage: str, known_topic_urls: List[str]) -> Dict[str, str]:
+    """
+    Meant to be used with the homepage to recover all sub-topics available
+    """
+    page_soup = get_page_soup(homepage)
+    article_urls = get_valid_urls(page_soup)
+    topics = {}
+
+    for url in article_urls:
+        url_soup = get_page_soup(url)
+        topic_elements = url_soup.find_all("li", attrs={"class": CONFIG["TOPIC_LIST_CLASS"]}) or []
+        for topic in topic_elements:
+            topic_url = "https://www.bbc.com" + topic.find("a").get("href")
+            if topic_url not in known_topic_urls:
+                topic_name = "_".join(topic.text.split()).upper()
+                topics[topic_name] = topic_url
+    return topics
+
+
 def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str]:
     """
     Obtains paragraphs texts and headlines input url article
@@ -269,7 +297,7 @@ def scrape(url, category, time_delay, articles_per_category, output_file_name):
     category_story_links = get_urls(url, category, time_delay, articles_per_category)
     
     # category_urls[category] = category_story_links
-    json.dump(category_story_links, open(f"{category}_story_links.json", "w"), indent=4)
+    # json.dump(category_story_links, open(f"{category}_story_links.json", "w"), indent=4)
     logging.info(f"{len(category_story_links)} stories found for {category} category")
 
     write_articles(
@@ -295,9 +323,11 @@ if __name__ == "__main__":
         categories = params.categories.upper().split(",")
         categories = {category: ALL_CATEGORIES[category] for category in categories}
     else:
-        categories = ALL_CATEGORIES
+        categories: dict = ALL_CATEGORIES
+        other_categories = get_topics(CONFIG["HOMEPAGE"], list(categories.values()))
+        categories.update(other_categories)
 
-    articles_per_category = -1
+    articles_per_category = params.no_of_articles
     if params.no_of_articles > 0 and params.spread:
         if "MOST_POPULAR" in categories:
             # most_popular only has one page and 10 articles only
@@ -321,3 +351,17 @@ if __name__ == "__main__":
         ) for category, url in categories.items()
     ]
     result = [p.get() for p in processes]
+
+    path = params.output_file_name.split("/")
+    output_file_pattern = os.path.join(path[0], f"*_{path[1]}")
+    category_file_names = glob.glob(output_file_pattern)
+
+    reader = partial(pd.read_csv, sep="\t")
+    all_dfs = map(reader, category_file_names)
+    corpora = pd.concat(all_dfs).drop_duplicates(subset="url", keep="last")
+    corpora.to_csv(params.output_file_name, sep="\t", index=False)
+
+    if params.cleanup:
+        for f in category_file_names:
+            os.remove(f)
+    
