@@ -1,7 +1,9 @@
 ARTICLE_COUNT_SPAN: lx-pagination__page-number qa-pagination-total-page-number 
 HEADLINE_SPAN_CLASS_A: bbc-13dm3d0 e1yj3cbb0
 HEADLINE_SPAN_CLASS_B: e8stly50 bbc-kqut3h e14hemmw1
-STORY_DIV_CLASS: bbc-19j92fr e57qer20 
+STORY_DIV_CLASS: bbc-19j92fr e57qer20
+TOPIC_LIST_CLASS: bbc-qbu3pw e1hq59l0
+HOMEPAGE: https://www.bbc.com/hausa
 CATEGORY_URLS:
   WASANNI: https://www.bbc.com/hausa/topics/cz74kjgv220t
   NISHADI: https://www.bbc.com/hausa/topics/cg726kz37wdt
