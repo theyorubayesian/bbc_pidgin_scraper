@@ -58,6 +58,11 @@ def get_parser() -> argparse.ArgumentParser:
         all its articles are collected and the remainder is spread across other categories"""
     )
     
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Remove sub-topic TSV files created after combining them into final corpora"
+    )
     return parser
 
 
