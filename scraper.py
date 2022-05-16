@@ -1,13 +1,16 @@
 import argparse
 import csv
+import glob
 import itertools
 import json
 import logging
 import multiprocessing
 import os
 import time
+from functools import partial
 from typing import Dict, List, Optional, Tuple
 
+import pandas as pd
 import requests
 import yaml
 from bs4 import BeautifulSoup
@@ -198,6 +201,25 @@ def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str
     return (headline, story_text, article_url)
 
 
+def get_topics(homepage: str, known_topic_urls: List[str]) -> Dict[str, str]:
+    """
+    Meant to be used with the homepage to recover all sub-topics available
+    """
+    page_soup = get_page_soup(homepage)
+    article_urls = get_valid_urls(page_soup)
+    topics = {}
+
+    for url in article_urls:
+        url_soup = get_page_soup(url)
+        topic_elements = url_soup.find_all("li", attrs={"class": CONFIG["TOPIC_LIST_CLASS"]}) or []
+        for topic in topic_elements:
+            topic_url = "https://www.bbc.com" + topic.find("a").get("href")
+            if topic_url not in known_topic_urls:
+                topic_name = "_".join(topic.text.split()).upper()
+                topics[topic_name] = topic_url
+    return topics
+
+
 def write_articles(category, output_file_name, urls, no_of_articles, time_delay):
     path = output_file_name.split("/")
     output_file_name = os.path.join(path[0], f"{category}_{path[1]}")
@@ -275,6 +297,8 @@ if __name__ == "__main__":
         categories = {category: ALL_CATEGORIES[category] for category in categories}
     else:
         categories = ALL_CATEGORIES
+        other_categories = get_topics(CONFIG["HOMEPAGE"], list(categories.values()))
+        categories.update(other_categories)
 
     articles_per_category = params.no_of_articles
     if params.no_of_articles > 0 and params.spread:
@@ -286,22 +310,6 @@ if __name__ == "__main__":
             articles_per_category = params.no_of_articles // len(categories)
         logging.info(f"Will collect at least {articles_per_category} stories per category")
     
-    # get urls
-    # category_urls = {}
-    # num_articles_collected = 0
-    # for category, url in categories.items():
-    #     logging.info(f"Getting stories for {category}...")
-    #     category_story_links = get_urls(url, category, params.time_delay, articles_per_category)
-    #     logging.info(f"{len(category_story_links)} stories found for {category} category")
-    #     category_urls[category] = category_story_links
-
-    #     num_articles_collected += len(category_story_links)
-    #     if params.no_of_articles > 0 \
-    #         and (num_articles_collected >= params.no_of_articles):
-    #         break
-
-    # # scrape and write to file 
-    # scrape(params.output_file_name, params.no_of_articles, category_urls, params.time_delay)
     pool = multiprocessing.Pool()
     processes = [
         pool.apply_async(
@@ -316,3 +324,16 @@ if __name__ == "__main__":
         ) for category, url in categories.items()
     ]
     result = [p.get() for p in processes]
+
+    path = params.output_file_name.split("/")
+    output_file_pattern = os.path.join(path[0], f"*_{path[1]}")
+    category_file_names = glob.glob(output_file_pattern)
+
+    reader = partial(pd.read_csv, sep="\t")
+    all_dfs = map(reader, category_file_names)
+    corpora = pd.concat(all_dfs).drop_duplicates(subset="url", keep="last")
+    corpora.to_csv(params.output_file_name, sep="\t", index=False)
+
+    if params.cleanup:
+        for f in category_file_names:
+            os.remove(f)
