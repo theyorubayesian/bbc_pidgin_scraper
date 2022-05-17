@@ -1,13 +1,16 @@
 import argparse
 import csv
+import glob
 import itertools
 import json
 import logging
 import multiprocessing
 import os
 import time
+from functools import partial
 from typing import Dict, List, Optional, Tuple
 
+import pandas as pd
 import requests
 import yaml
 from bs4 import BeautifulSoup
@@ -54,6 +57,13 @@ def get_parser() -> argparse.ArgumentParser:
         help= "Specify time delay after every url request",
         )
     
+    parser.add_argument(
+        "--spread",
+        action="store_true",
+        help="""Spread `no_of_articles` evenly across categories. If `most_popular` in categories, 
+        all its articles are collected and the remainder is spread across other categories"""
+    )
+
     parser.add_argument(
         "--spread",
         action="store_true",
@@ -198,6 +208,25 @@ def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str
     return (headline, story_text, article_url)
 
 
+def get_topics(homepage: str, known_topic_urls: List[str]) -> Dict[str, str]:
+    """
+    Meant to be used with the homepage to recover all sub-topics available
+    """
+    page_soup = get_page_soup(homepage)
+    article_urls = get_valid_urls(page_soup)
+    topics = {}
+
+    for url in article_urls:
+        url_soup = get_page_soup(url)
+        topic_elements = url_soup.find_all("li", attrs={"class": CONFIG["TOPIC_LIST_CLASS"]}) or []
+        for topic in topic_elements:
+            topic_url = "https://www.bbc.com" + topic.find("a").get("href")
+            if topic_url not in known_topic_urls:
+                topic_name = "_".join(topic.text.split()).upper()
+                topics[topic_name] = topic_url
+    return topics
+
+
 def write_articles(category, output_file_name, urls, no_of_articles, time_delay):
     path = output_file_name.split("/")
     output_file_name = os.path.join(path[0], f"{category}_{path[1]}")
@@ -257,50 +286,6 @@ def scrape(url, category, time_delay, articles_per_category, output_file_name):
         articles_per_category,
         time_delay
     )
-# def scrape(output_file_name:str, no_of_articles:int, category_urls:Dict[str, List[str]], time_delay:bool) -> None:
-#     """
-#     Main function for scraping and writing articles to file
-
-#     input:
-#         :param output_file_name: file name where output is saved
-#         :param no_of_articles: number of user specified articles to scrape
-#         :param category_urls: all articles in a category
-#     """
-#     logging.info("Writing articles to file...")
-
-#     with open(output_file_name, "w") as csv_file:
-#         headers = ["headline", "text", "category", "url"]
-#         writer = csv.DictWriter(csv_file, delimiter="\t", fieldnames = headers)
-#         writer.writeheader()
-#         story_num = 0
-
-#         for category, urls in category_urls.items():
-#             logging.info(f"Writing articles for {category} category...")
-#             for url in urls:
-#                 headline, paragraphs, url = get_article_data(url)
-#                 if paragraphs:
-#                     writer.writerow({
-#                         headers[0]:headline, 
-#                         headers[1]:paragraphs, 
-#                         headers[2]:category, 
-#                         headers[3]:url,
-#                         })
-#                     story_num+=1
-#                     logging.info(f"Successfully wrote story number {story_num}")
-
-#                 if story_num == no_of_articles:
-#                     logging.info(
-#                         f"Requested total number of articles {no_of_articles} reached"
-#                         )
-#                     logging.info(
-#                         f"Scraping done. A total of {no_of_articles} articles were scraped!"
-#                         )
-#                     return
-#                 if time_delay: 
-#                     time.sleep(10)
-#     logging.info(
-#         f"Scraping done. A total of {story_num} articles were scraped!"
-#         )
 
 
 if __name__ == "__main__":
@@ -319,6 +304,8 @@ if __name__ == "__main__":
         categories = {category: ALL_CATEGORIES[category] for category in categories}
     else:
         categories = ALL_CATEGORIES
+        other_categories = get_topics(CONFIG["HOMEPAGE"], list(categories.values()))
+        categories.update(other_categories)
 
     articles_per_category = params.no_of_articles
     if params.no_of_articles > 0 and params.spread:
@@ -330,22 +317,6 @@ if __name__ == "__main__":
             articles_per_category = params.no_of_articles // len(categories)
         logging.info(f"Will collect at least {articles_per_category} stories per category")
     
-    # get urls
-    # category_urls = {}
-    # num_articles_collected = 0
-    # for category, url in categories.items():
-    #     logging.info(f"Getting stories for {category}...")
-    #     category_story_links = get_urls(url, category, params.time_delay, articles_per_category)
-    #     logging.info(f"{len(category_story_links)} stories found for {category} category")
-    #     category_urls[category] = category_story_links
-
-    #     num_articles_collected += len(category_story_links)
-    #     if params.no_of_articles > 0 \
-    #         and (num_articles_collected >= params.no_of_articles):
-    #         break
-
-    # # scrape and write to file 
-    # scrape(params.output_file_name, params.no_of_articles, category_urls, params.time_delay)
     pool = multiprocessing.Pool()
     processes = [
         pool.apply_async(
@@ -360,3 +331,16 @@ if __name__ == "__main__":
         ) for category, url in categories.items()
     ]
     result = [p.get() for p in processes]
+
+    path = params.output_file_name.split("/")
+    output_file_pattern = os.path.join(path[0], f"*_{path[1]}")
+    category_file_names = glob.glob(output_file_pattern)
+
+    reader = partial(pd.read_csv, sep="\t")
+    all_dfs = map(reader, category_file_names)
+    corpora = pd.concat(all_dfs).drop_duplicates(subset="url", keep="last")
+    corpora.to_csv(params.output_file_name, sep="\t", index=False)
+
+    if params.cleanup:
+        for f in category_file_names:
+            os.remove(f)
