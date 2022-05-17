@@ -65,10 +65,9 @@ def get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--spread",
+        "--cleanup",
         action="store_true",
-        help="""Spread `no_of_articles` evenly across categories. If `most_popular` in categories, 
-        all its articles are collected and the remainder is spread across other categories"""
+        help="Remove sub-topic TSV files created after combining them into final corpora"
     )
     
     return parser
@@ -276,7 +275,7 @@ def scrape(url, category, time_delay, articles_per_category, output_file_name):
     category_story_links = get_urls(url, category, time_delay, articles_per_category)
     
     # category_urls[category] = category_story_links
-    json.dump(category_story_links, open(f"{category}_story_links.json", "w"), indent=4)
+    # json.dump(category_story_links, open(f"{category}_story_links.json", "w"), indent=4)
     logging.info(f"{len(category_story_links)} stories found for {category} category")
 
     write_articles(
