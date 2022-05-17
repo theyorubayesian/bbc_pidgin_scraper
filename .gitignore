@@ -2,3 +2,5 @@
 env/
 data/
 afriberta_corpus/
+/.vscode
+/.ipynb_checkpoints
