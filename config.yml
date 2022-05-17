@@ -1,18 +1,29 @@
 ARTICLE_COUNT_SPAN: lx-pagination__page-number qa-pagination-total-page-number
 PAGINATION_LIST_CLASS: bbc-f8df6t e19602dz4
-HEADLINE_SPAN_CLASS_A: bbc-13dm3d0 e1yj3cbb0
+HEADLINE_SPAN_CLASS_A:
+  - bbc-13dm3d0 e1yj3cbb0
+  - bbc-944mpi e1yj3cbb0
 ARTICLE_DATE_CLASS: bbc-1bnmgo0 e4zesg50
-HEADLINE_SPAN_CLASS_B: e8stly50 bbc-kqut3h e14hemmw1
+HEADLINE_SPAN_CLASS_B:
+  - e8stly50 bbc-kqut3h e14hemmw1
+  - e8stly50 bbc-1joh6wp e14hemmw1
 TOPIC_LIST_CLASS: bbc-qbu3pw e1hq59l0
 STORY_DIV_CLASS: bbc-19j92fr e57qer20
-HOMEPAGE: https://www.bbc.com/pidgin
 
-CATEGORY_URLS:
-  NIGERIA: https://www.bbc.com/pidgin/topics/c2dwqd1zr92t
-  AFRICA: https://www.bbc.com/pidgin/topics/c404v061z85t
-  SPORT: https://www.bbc.com/pidgin/topics/cjgn7gv77vrt
-  WORLD: https://www.bbc.com/pidgin/topics/c0823e52dd0t
-  ENTERTAINMENT: https://www.bbc.com/pidgin/topics/cqywjyzk2vyt
-  MOST_POPULAR: https://www.bbc.com/pidgin/popular/read
-
+# CHANGE THESE VALUES TO FIT THE LANGUAGE BEING SCRAPED 
+HOMEPAGE: https://www.bbc.com/somali
 OLDEST_ARTICLE_DATE: '2021-01-31'
+CATEGORY_URLS:
+  # NIGERIA: https://www.bbc.com/pidgin/topics/c2dwqd1zr92t
+  # AFRICA: https://www.bbc.com/pidgin/topics/c404v061z85t
+  # SPORT: https://www.bbc.com/pidgin/topics/cjgn7gv77vrt
+  # WORLD: https://www.bbc.com/pidgin/topics/c0823e52dd0t
+  # ENTERTAINMENT: https://www.bbc.com/pidgin/topics/cqywjyzk2vyt
+  # MOST_POPULAR: https://www.bbc.com/pidgin/popular/read
+VALID_ARTICLE_URL_STUBS:
+#  - world
+#  - sport
+#  - tori
+#  - media
+  - cayaaraha
+  - war

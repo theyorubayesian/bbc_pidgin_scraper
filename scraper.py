@@ -92,6 +92,25 @@ def get_page_soup(url:str) -> BeautifulSoup:
     return page_soup
 
 
+def get_page_count(page_soup: BeautifulSoup) -> int:
+    pagination_list = page_soup.find_all(
+        "ul", attrs={"class": CONFIG["PAGINATION_LIST_CLASS"]}
+    )
+    if pagination_list:
+        total_page_count = int(pagination_list[0].find_all("li")[-1].text)
+        return total_page_count
+    else:
+        pagination_list = page_soup.find_all(
+            "span", attrs={"class": CONFIG["ARTICLE_COUNT_SPAN"]}
+            )
+    
+    if pagination_list:
+        total_page_count = int(pagination_list[0].text)
+        return total_page_count
+
+    return 1
+
+
 def get_urls(
     category_url:str, 
     category:str, 
@@ -109,27 +128,30 @@ def get_urls(
     """
     page_soup = get_page_soup(category_url)
     category_urls = get_valid_urls(page_soup)
-
+    logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
     # get total number of pages for given category
     # article_count_span = page_soup.find_all(
     #     "span", attrs={"class": CONFIG["ARTICLE_COUNT_SPAN"]}
     #     )
-    pagination_list = page_soup.find_all(
-        "ul", attrs={"class": CONFIG["PAGINATION_LIST_CLASS"]}
-    )
+    # pagination_list = page_soup.find_all(
+    #     "ul", attrs={"class": CONFIG["PAGINATION_LIST_CLASS"]}
+    # ) or page_soup.find_all
+
     # if there are multiple pages, get valid urls from each page
     # else just get the articles on the first page
-    if pagination_list:
-        # total_article_count = int(article_count_span[0].text)
-        total_article_count = int(pagination_list[0].find_all("li")[-1].text)
-        logging.info(f"{total_article_count} pages found for {category}")
-        logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
+    total_page_count = get_page_count(page_soup)
+    logging.info(f"{total_page_count} page(s) found for {category}")
 
+    if total_page_count > 1:
+        # total_article_count = int(article_count_span[0].text)
+        # total_article_count = int(pagination_list[0].find_all("li")[-1].text)
+    # page_soup.find_all(
+    #     "span", attrs={"class": CONFIG["ARTICLE_COUNT_SPAN"]}
+    #     )
         if articles_per_category > 0 and len(category_urls) >= articles_per_category:
             return category_urls
 
-        for count in range(1, total_article_count):
-
+        for count in range(1, total_page_count):
             page_soup = get_page_soup(category_url + f"?page={count+1}")
             page_urls = get_valid_urls(page_soup)
             logging.info(f"{len(page_urls)} urls in page {count+1} gotten for {category}")
@@ -140,8 +162,6 @@ def get_urls(
 
             if time_delay: 
                 time.sleep(10)
-    else:
-        logging.info(f"Only one page found for {category}. {len(category_urls)} urls gotten")
 
     return category_urls
 
@@ -165,16 +185,21 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
         #     href.startswith("/pidgin/tori") or href.startswith("/pidgin/world") or href.startswith("/pidgin/sport")
         #     ) and href[-1].isdigit():
             # story_url = "https://www.bbc.com" + href
-        stub = href.split("/")[-1]
-        if stub.startswith("tori") or \
-            stub.startswith("world") or \
-                stub.startswith("media") or \
-                    stub.startswith("sport") and \
-                        stub[-1].isdigit():
-            story_url = "https://www.bbc.com" + href if href.startswith("/pidgin") else href
-            
-            if "live" in story_url.split("/"):
-                continue
+        try:
+            _, stub = list(filter(None, href.split("/")))
+        except Exception as err:
+            continue
+        
+        if stub.isdigit() or (stub.split("-")[0] in CONFIG["VALID_ARTICLE_URL_STUBS"] and stub[-1].isdigit()):
+        # if stub.startswith("tori") or \
+        #     stub.startswith("world") or \
+        #         stub.startswith("media") or \
+        #             stub.startswith("sport") and \
+        #                 stub[-1].isdigit():
+            story_url = "https://www.bbc.com" + href # if href.startswith("/pidgin") else href
+            # print(story_url)
+            # if "live" in story_url.split("/"):
+            #     continue
 
             valid_article_urls.append(story_url)
 
@@ -195,9 +220,28 @@ def get_topics(homepage: str, known_topic_urls: List[str]) -> Dict[str, str]:
         for topic in topic_elements:
             topic_url = "https://www.bbc.com" + topic.find("a").get("href")
             if topic_url not in known_topic_urls:
-                topic_name = "_".join(topic.text.split()).upper()
+                topic_name = "_".join(topic.text.split()).upper().replace("/", "_").replace("\\", "_")
                 topics[topic_name] = topic_url
     return topics
+
+
+def get_headline(page_soup: BeautifulSoup) -> str:
+    for cls in CONFIG["HEADLINE_SPAN_CLASS_A"]:
+        headline_elem = page_soup.find(
+            "h1", attrs={"class": cls}
+        )
+        if headline_elem:
+            break
+    
+    if not headline_elem:
+        for cls in CONFIG["HEADLINE_SPAN_CLASS_B"]:
+            headline_elem = page_soup.find(
+                "strong", attrs={"class": CONFIG["HEADLINE_SPAN_CLASS_B"]}
+            )
+            if headline_elem:
+                break
+    
+    return headline_elem.text.strip() if headline_elem else ""
 
 
 def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str]:
@@ -220,18 +264,19 @@ def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str
         if article_date <= OLDEST_ARTICLE_DATE:
             return ("","",article_url)
     
-    headline = page_soup.find(
-        "h1", attrs={"class": CONFIG["HEADLINE_SPAN_CLASS_A"]}
-        )
-    # by inspection, if the headline is not in the class above, it should be in the one below
-    # TODO: Investigate if this is still necessary
-    if not headline:
-        headline = page_soup.find(
-            "strong", attrs={"class": CONFIG["HEADLINE_SPAN_CLASS_B"]}
-            )
+    headline = get_headline(page_soup)
+    # headline = page_soup.find(
+    #     "h1", attrs={"class": CONFIG["HEADLINE_SPAN_CLASS_A"]}
+    #     )
+    # # by inspection, if the headline is not in the class above, it should be in the one below
+    # # TODO: Investigate if this is still necessary
+    # if not headline:
+    #     headline = page_soup.find(
+    #         "strong", attrs={"class": CONFIG["HEADLINE_SPAN_CLASS_B"]}
+    #         )
     
-    if headline:
-        headline = headline.text.strip()
+    # if headline:
+    #     headline = headline.text.strip()
     
     story_text = " "
     story_div = page_soup.find_all(
@@ -323,7 +368,7 @@ if __name__ == "__main__":
         categories = params.categories.upper().split(",")
         categories = {category: ALL_CATEGORIES[category] for category in categories}
     else:
-        categories: dict = ALL_CATEGORIES
+        categories: dict = ALL_CATEGORIES or {}
         other_categories = get_topics(CONFIG["HOMEPAGE"], list(categories.values()))
         categories.update(other_categories)
 
