@@ -133,7 +133,6 @@ def get_urls(
 
             if time_delay: 
                 time.sleep(10)
-        
     else:
         logging.info(f"Only one page found for {category}. {len(category_urls)} urls gotten")
 
@@ -217,7 +216,7 @@ def get_topics(homepage: str, known_topic_urls: List[str]) -> Dict[str, str]:
         for topic in topic_elements:
             topic_url = "https://www.bbc.com" + topic.find("a").get("href")
             if topic_url not in known_topic_urls:
-                topic_name = "_".join(topic.text.split()).upper()
+                topic_name = "_".join(topic.text.split()).upper().replace("/", "_").replace("\\", "_")
                 topics[topic_name] = topic_url
     return topics
 
