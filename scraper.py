@@ -7,12 +7,15 @@ import multiprocessing
 import os
 import time
 from functools import partial
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Callable
 
 import pandas as pd
 import requests
 import yaml
 from bs4 import BeautifulSoup
+
+from helpers import clean_string
+from helpers import is_valid_url_factory
 
 logging.root.setLevel(logging.INFO)
 
@@ -27,7 +30,17 @@ def get_parser() -> argparse.ArgumentParser:
     returns:
         parser - ArgumentParser object
     """
-    parser = argparse.ArgumentParser(description="BBC Pidgin Scraper")
+    parser = argparse.ArgumentParser(
+        prog="BBC-Scraper",
+        description="BBC News Website Scraper",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        epilog="Written by: Akintunde 'theyorubayesian' Oladipo <akin.o.oladipo at gmail dot com>"
+    )
+    parser.add_argument(
+        "--language",
+        type=str,
+        help="Language of BBC Website"
+    )
     parser.add_argument(
         "--output_file_name", 
         type=str, 
@@ -37,7 +50,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no_of_articles", 
         type=int, 
-        default=-1, 
+        default=-1,
         help="Number of articles to be scraped from the BBC pidgin website"
              "If -1, we scrape all articles we find",
         )
@@ -48,7 +61,6 @@ def get_parser() -> argparse.ArgumentParser:
         help= "Specify what news categories to scrape from." 
               "Multiple news categories should be separated by a comma. eg. 'africa,world,sport'",
         )
-    
     parser.add_argument(
         "--time_delay", 
         type = bool, 
@@ -88,59 +100,17 @@ def get_page_soup(url:str) -> BeautifulSoup:
     return page_soup
 
 
-def get_urls(
-    category_url:str, 
-    category:str, 
-    time_delay:bool, 
-    articles_per_category: Optional[int] = None
-    ) -> List[str]:
-    """
-    Obtains all the article urls from the category url it takes in
-
-    input:
-        :param categpry_url: category url
-        :param category: category name
-    returns:
-        - category_urls: list of all valid article urls on all the category pages
-    """
-    page_soup = get_page_soup(category_url)
-    category_urls = get_valid_urls(page_soup)
-    logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
-
-    if articles_per_category > 0 and len(category_urls) >= articles_per_category:
-        return category_urls
+def get_page_count(soup: BeautifulSoup) -> int:
+    count = 1
+    ul: BeautifulSoup = soup.find_all("ul", attrs={"class": CONFIG["ARTICLE_COUNT_SPAN"]})
     
-    # get total number of pages for given category
-    article_count_span = page_soup.find_all(
-        "span", attrs={"class": CONFIG["ARTICLE_COUNT_SPAN"]}
-        )
-    # if there are multiple pages, get valid urls from each page
-    # else just get the articles on the first page
-    if article_count_span:
-        total_page_count = int(article_count_span[0].text)
-        logging.info(f"{total_page_count} pages found for {category}")
-        
-        for count in range(1, total_page_count):
-            page_soup = get_page_soup(category_url + f"/page/{count+1}")
-            page_urls = get_valid_urls(page_soup)
-            logging.info(f"{len(page_urls)} urls in page {count+1} gotten for {category}")
-            category_urls+=page_urls
-            
-            if articles_per_category > 0 and len(category_urls) >= articles_per_category:
-                break
-                
-            articles_per_category -= len(page_urls)
-
-            if time_delay: 
-                time.sleep(10)
-        
-    else:
-        logging.info(f"Only one page found for {category}. {len(category_urls)} urls gotten")
-
-    return category_urls
+    if ul:
+        count = int(ul[0].find_all("li")[-1].text)
+    
+    return count
 
 
-def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
+def get_valid_urls(category_page: BeautifulSoup, is_valid_url: Callable) -> List[str]:
     """
     Gets all valid urls from a category page
 
@@ -152,15 +122,53 @@ def get_valid_urls(category_page:BeautifulSoup) -> List[str]:
     all_urls = category_page.findAll("a")
     valid_article_urls = []
     for url in all_urls:
-        href = url.get("href")
-        # from a look at BBC pidgin's urls, they always begin with the following strings. 
-        # so we obtain valid article urls using these strings
-        if (href.startswith("swahili/habari-") or href.startswith("/swahili/")) \
-            and href[-1].isdigit() and not href.startswith("/yoruba/topics"):
+        href: str = url.get("href")
+        if is_valid_url(href):
             story_url = "https://www.bbc.com" + href if href.startswith("/swahili") else href
             valid_article_urls.append(story_url)
 
     return list(set(valid_article_urls))
+
+
+def get_urls(
+    category_url:str, 
+    category:str, 
+    time_delay:bool,
+    lang: str,
+    articles_per_category: Optional[int] = None, 
+    ) -> List[str]:
+    """
+    Obtains all the article urls from the category url it takes in
+
+    input:
+        :param categpry_url: category url
+        :param category: category name
+    returns:
+        - category_urls: list of all valid article urls on all the category pages
+    """
+    page_soup = get_page_soup(category_url)
+    category_urls = get_valid_urls(page_soup, is_valid_url_factory[lang])
+    logging.info(f"{len(category_urls)} urls in page 1 gotten for {category}")
+
+    if articles_per_category > 0 and len(category_urls) >= articles_per_category:
+        return category_urls
+    
+    total_page_count = get_page_count(page_soup)
+    logging.info(f"{total_page_count} pages found for {category}")
+        
+    for count in range(1, total_page_count):
+        page_soup = get_page_soup(category_url + f"?page={count+1}")
+        page_urls = get_valid_urls(page_soup, is_valid_url_factory[lang])
+        logging.info(f"{len(page_urls)} urls in page {count+1} gotten for {category}")
+        category_urls+=page_urls
+        
+        if articles_per_category > 0 and len(category_urls) >= articles_per_category:
+            break
+        
+        if time_delay: 
+            time.sleep(10)
+    
+    return category_urls
 
 
 def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str]:
@@ -179,8 +187,7 @@ def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str
     headline = page_soup.find(
         "h1", attrs={"class": CONFIG["HEADLINE_SPAN_CLASS_A"]}
         )
-    # by inspection, if the headline is not in the class above, it should be in the one below
-    # TODO: Investigate if this is still necessary
+
     if not headline:
         headline = page_soup.find(
             "strong", attrs={"class": CONFIG["HEADLINE_SPAN_CLASS_B"]}
@@ -198,17 +205,17 @@ def get_article_data(article_url:str) -> Tuple[Optional[str], Optional[str], str
         all_paragraphs = list(itertools.chain(*all_paragraphs))
         story_text = story_text.join(str(paragraph) for paragraph in all_paragraphs)
         story_text = BeautifulSoup(story_text, "html.parser").get_text()
-    story_text = story_text if not story_text == " " else None
+    story_text = story_text.strip() if not story_text == " " else None
 
     return (headline, story_text, article_url)
 
 
-def get_topics(homepage: str, known_topic_urls: List[str]) -> Dict[str, str]:
+def get_topics(homepage: str, known_topic_urls: List[str], lang: str) -> Dict[str, str]:
     """
     Meant to be used with the homepage to recover all sub-topics available
     """
     page_soup = get_page_soup(homepage)
-    article_urls = get_valid_urls(page_soup)
+    article_urls = get_valid_urls(page_soup, is_valid_url_factory[lang])
     topics = {}
 
     for url in article_urls:
@@ -217,14 +224,14 @@ def get_topics(homepage: str, known_topic_urls: List[str]) -> Dict[str, str]:
         for topic in topic_elements:
             topic_url = "https://www.bbc.com" + topic.find("a").get("href")
             if topic_url not in known_topic_urls:
-                topic_name = "_".join(topic.text.split()).upper()
+                topic_name = topic.text
                 topics[topic_name] = topic_url
     return topics
 
 
 def write_articles(category, output_file_name, urls, no_of_articles, time_delay):
     path = output_file_name.split("/")
-    output_file_name = os.path.join(path[0], f"{category}_{path[1]}")
+    output_file_name = os.path.join(path[0], f"{clean_string(category)}_{path[1]}")
     with open(output_file_name, "w") as csv_file:
         headers = ["headline", "text", "category", "url"]
         writer = csv.DictWriter(csv_file, delimiter="\t", fieldnames = headers)
@@ -259,7 +266,7 @@ def write_articles(category, output_file_name, urls, no_of_articles, time_delay)
         )
 
 
-def scrape(url, category, time_delay, articles_per_category, output_file_name):
+def scrape(url, category, time_delay, articles_per_category, output_file_name, lang):
     """
     Main function for scraping and writing articles to file
 
@@ -269,7 +276,7 @@ def scrape(url, category, time_delay, articles_per_category, output_file_name):
         :param category_urls: all articles in a category
     """
     logging.info(f"Getting stories for {category}...")
-    category_story_links = get_urls(url, category, time_delay, articles_per_category)
+    category_story_links = get_urls(url, category, time_delay, lang, articles_per_category)
     
     # category_urls[category] = category_story_links
     # json.dump(category_story_links, open(f"{category}_story_links.json", "w"), indent=4)
@@ -293,14 +300,14 @@ if __name__ == "__main__":
     # initialize parser
     parser = get_parser()
     params, _ = parser.parse_known_args()
-
+    
     # specify categories to scrape
     if params.categories != "all":
         categories = params.categories.upper().split(",")
-        categories = {category: ALL_CATEGORIES[category] for category in categories}
+        categories = {category: ALL_CATEGORIES[params.language][category] for category in categories}
     else:
-        categories = ALL_CATEGORIES
-        other_categories = get_topics(CONFIG["HOMEPAGE"], list(categories.values()))
+        categories = ALL_CATEGORIES[params.language]
+        other_categories = get_topics(CONFIG["HOMEPAGE"][params.language], list(categories.values()), params.language)
         categories.update(other_categories)
 
     articles_per_category = params.no_of_articles
@@ -310,7 +317,7 @@ if __name__ == "__main__":
             # subtract this from no_of_articles to be collected before spreading
             articles_per_category = (params.no_of_articles-10) // (len(categories)-1)
         else:
-            articles_per_category = params.no_of_articles // len(categories)
+            articles_per_category = round(params.no_of_articles / len(categories))
         logging.info(f"Will collect at least {articles_per_category} stories per category")
     
     pool = multiprocessing.Pool()
@@ -322,7 +329,8 @@ if __name__ == "__main__":
                 category,
                 params.time_delay,
                 articles_per_category,
-                params.output_file_name
+                params.output_file_name,
+                params.language
             )
         ) for category, url in categories.items()
     ]
